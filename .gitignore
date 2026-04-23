@@ -11,6 +11,9 @@ node_modules/
 dist/
 build/
 
+# Azure
+.local.settings.json
+
 # VS Code settings (optional)
 .vscode/
 
