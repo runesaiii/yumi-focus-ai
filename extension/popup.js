@@ -119,6 +119,22 @@ async function openOrFocusTabForQueueItem(item) {
   return null;
 }
 
+async function promptNextQueuedTask() {
+  const queue = await getQueue();
+  const firstItem = normalizeQueueItem(queue[0]);
+  const nextLabel = firstItem.label || "No queued task";
+
+  const shouldContinue = confirm(`Move to next saved task?\nNext: ${nextLabel}`);
+
+  if (shouldContinue && firstItem.label) {
+    await openOrFocusTabForQueueItem(firstItem);
+    await removeQueueItem(0);
+    await renderQueue();
+  }
+
+  await renderUI();
+}
+
 function startTimerDisplay() {
   if (timerInterval) clearInterval(timerInterval);
 
@@ -291,6 +307,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 
   await chrome.storage.local.set({ sessionActive: false, sessionPaused: false });
 
+  let summaryShown = false;
   try {
     const summaryResponse = await fetch("http://localhost:3000/summary", {
       method: "POST",
@@ -309,34 +326,23 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
       document.getElementById("summaryText").textContent = summary.summary || "Session complete!";
       document.getElementById("nextStepText").textContent = summary.nextStep || "";
       document.getElementById("summarySection").style.display = "block";
+      summaryShown = true;
     }
   } catch (error) {
     console.warn("Failed to fetch summary:", error);
-    alert("Task complete! Check your queued tasks.");
   }
 
   await renderUI();
   clearInterval(timerInterval);
+
+  if (!summaryShown) {
+    await promptNextQueuedTask();
+  }
 });
 
 document.getElementById("summaryCloseBtn").addEventListener("click", async () => {
   document.getElementById("summarySection").style.display = "none";
-
-  const queue = await getQueue();
-  const firstItem = normalizeQueueItem(queue[0]);
-  const nextLabel = firstItem.label || "No queued task";
-
-  const shouldContinue = confirm(
-    `Move to next saved task?\nNext: ${nextLabel}`
-  );
-
-  if (shouldContinue && firstItem.label) {
-    await openOrFocusTabForQueueItem(firstItem);
-    await removeQueueItem(0);
-    await renderQueue();
-  }
-
-  await renderUI();
+  await promptNextQueuedTask();
 });
 
 document.getElementById("save").addEventListener("click", async () => {
