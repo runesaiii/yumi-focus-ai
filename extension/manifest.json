@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "Yumi Focus AI",
+    "version": "1.0",
+    "description": "Stay focused by limiting task switching",
+    "permissions": ["tabs", "storage", "activeTab", "scripting"],
+    "host_permissions": ["https://*/*", "http://*/*"],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }

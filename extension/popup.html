@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Focus Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h2>Yumi Focus AI</h2>
+
+  <div id="startSection">
+    <input id="task" placeholder="Task name (example: Spreadsheet update)" />
+    <input id="focusMinutes" type="number" min="1" placeholder="Enter desired minutes to finish task" />
+    <button id="start">Select Current Tab + Start Focus</button>
+  </div>
+
+  <div id="sessionSection" style="display:none;">
+    <p id="sessionStatus" class="status"></p>
+    <p id="timerDisplay" class="timer"></p>
+
+    <div class="session-controls">
+      <h3>Session Controls</h3>
+      <input id="adjustMinutes" type="number" placeholder="Minutes (+/-)" />
+      <button id="adjustBtn">Adjust Time</button>
+      <button id="addTabBtn">Add Current Tab to Focus</button>
+      <button id="pauseBtn">Pause</button>
+      <button id="doneBtn">Task Done</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <button id="queueToggleBtn">Queued Tasks</button>
+
+  <div id="distractionSection" style="display:none;">
+    <input id="newTask" placeholder="Got distracted? Save task/site for later" />
+    <button id="save">Save for later</button>
+    <ul id="queue"></ul>
+  </div>
+
+  <div id="summarySection" style="display:none;">
+    <h3>Session Complete!</h3>
+    <p id="summaryText"></p>
+    <p id="nextStepText"></p>
+    <button id="summaryCloseBtn">Got it</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
