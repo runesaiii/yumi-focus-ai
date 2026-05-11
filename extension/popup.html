@@ -1,47 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Focus Agent</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Yumi Focus AI</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>Yumi Focus AI</h2>
+  <header class="app-header">
+    <h1>🎯 Yumi Focus AI</h1>
+    <p class="tagline">Stay focused. Capture distractions.</p>
+  </header>
 
-  <div id="startSection">
-    <input id="task" placeholder="Task name (example: Spreadsheet update)" />
-    <input id="focusMinutes" type="number" min="1" placeholder="Enter desired minutes to finish task" />
-    <button id="start">Select Current Tab + Start Focus</button>
+  <div id="startSection" class="section">
+    <h2>📋 Start a Focus Session</h2>
+    <div class="form-group">
+      <label for="task">What task are you focusing on?</label>
+      <input id="task" type="text" placeholder="e.g., Spreadsheet update" />
+    </div>
+    
+    <div class="form-group">
+      <label for="focusMinutes">How long? (minutes)</label>
+      <input id="focusMinutes" type="number" min="1" value="25" />
+    </div>
+    
+    <button id="start" class="btn btn-primary">▶ Select Tab & Start Focus</button>
   </div>
 
-  <div id="sessionSection" style="display:none;">
-    <p id="sessionStatus" class="status"></p>
-    <p id="timerDisplay" class="timer"></p>
+  <div id="sessionSection" style="display:none;" class="section active-session">
+    <div class="timer-box">
+      <p id="timerDisplay" class="timer">⏱ Time left: 25:00</p>
+      <p id="sessionStatus" class="status"></p>
+    </div>
 
     <div class="session-controls">
-      <h3>Session Controls</h3>
-      <input id="adjustMinutes" type="number" placeholder="Minutes (+/-)" />
-      <button id="adjustBtn">Adjust Time</button>
-      <button id="addTabBtn">Add Current Tab to Focus</button>
-      <button id="pauseBtn">Pause</button>
-      <button id="doneBtn">Task Done</button>
+      <h3>⚙️ Session Controls</h3>
+      <div class="control-group">
+        <input id="adjustMinutes" type="number" placeholder="±min" class="adjust-input" />
+        <button id="adjustBtn" class="btn btn-small">Adjust</button>
+      </div>
+
+      <button id="pauseBtn" class="btn btn-secondary">⏸ Pause</button>
+      <button id="doneBtn" class="btn btn-success">✅ Task Done</button>
     </div>
   </div>
 
-  <hr>
+  <section class="queue-section">
+    <button id="queueToggleBtn" class="btn btn-queue">📌 Saved Tasks (Click to expand)</button>
 
-  <button id="queueToggleBtn">Queued Tasks</button>
+    <div id="distractionSection" style="display:none;" class="distraction-panel">
+      <h3>💾 Save a Task for Later</h3>
+      <div class="form-group">
+        <input id="newTask" type="text" placeholder="e.g., Write notes, Reply to Slack" />
+        <button id="save" class="btn btn-primary">Save</button>
+      </div>
 
-  <div id="distractionSection" style="display:none;">
-    <input id="newTask" placeholder="Got distracted? Save task/site for later" />
-    <button id="save">Save for later</button>
-    <ul id="queue"></ul>
+      <div class="queue-list">
+        <ul id="queue"></ul>
+      </div>
+    </div>
+  </section>
+
+  <div id="summarySection" style="display:none;" class="section summary-banner">
+    <h3>🏆 Session Summary</h3>
+    <p id="summaryText"></p>
+    <p id="nextStepText" class="next-step"></p>
+    <button id="summaryCloseBtn" class="btn btn-primary">Got it! Next →</button>
   </div>
 
-  <div id="summarySection" style="display:none;">
-    <h3>Session Complete!</h3>
-    <p id="summaryText"></p>
-    <p id="nextStepText"></p>
-    <button id="summaryCloseBtn">Got it</button>
+  <div id="dialogOverlay" class="dialog-overlay" style="display:none;">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogMessage">
+      <div id="dialogBadge" class="dialog-badge"></div>
+      <h2 id="dialogTitle"></h2>
+      <p id="dialogMessage"></p>
+      <input id="dialogInput" type="text" style="display:none;" />
+      <div id="dialogActions" class="dialog-actions"></div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

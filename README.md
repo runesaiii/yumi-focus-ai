@@ -14,6 +14,17 @@ An agentic AI-powered Chrome extension that prevents task switching and helps us
 - Azure Functions (Backend)
 - Azure OpenAI (Optional AI layer)
 
+## App Service Deployment
+
+The backend is ready to run on Azure App Service. It reads `PORT` from the environment, supports configurable CORS via `CORS_ORIGIN`, and includes rate limiting for the AI endpoints.
+
+Required App Settings:
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_API_KEY`
+- `AZURE_OPENAI_DEPLOYMENT`
+- `AZURE_OPENAI_API_VERSION` (optional)
+- `CORS_ORIGIN` (comma-separated allowed origins, or `*` for local testing only)
+
 ## Setup
 
 ### Extension
@@ -37,5 +48,7 @@ If you want `/check` to use Azure OpenAI, set these environment variables before
 - `AZURE_OPENAI_API_KEY`
 - `AZURE_OPENAI_DEPLOYMENT`
 - `AZURE_OPENAI_API_VERSION` (optional, defaults to `2024-02-15-preview`)
+
+For local development against the extension or browser, you can set `CORS_ORIGIN` to the exact origin of the client, such as `chrome-extension://<your-extension-id>` or `http://localhost:3000`.
 
 If those variables are not set, the backend falls back to the local heuristic classifier so you can keep testing without Azure configured.
