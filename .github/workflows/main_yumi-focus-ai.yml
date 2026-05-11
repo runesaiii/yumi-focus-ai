@@ -57,17 +57,10 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7DB8FDD4372E48F8A8AECAE2E79FEBDA }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: yumi-focus-ai
           slot-name: Production
           package: backend
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'yumi-focus-ai'
-          slot-name: 'Production'
-          package: .
+    
           
