@@ -15,6 +15,8 @@ const dialogTitle = document.getElementById("dialogTitle");
 const dialogMessage = document.getElementById("dialogMessage");
 const dialogInput = document.getElementById("dialogInput");
 const dialogActions = document.getElementById("dialogActions");
+const BACKEND_BASE_URL = "https://yumi-focus-ai.azurewebsites.net";
+const BACKEND_CHECK_URL = `${BACKEND_BASE_URL}/check`;
 
 let timerInterval = null;
 let dialogResolver = null;
@@ -347,7 +349,7 @@ async function findRelevantOpenTabForTask(taskLabel) {
 
     try {
       const promises = candidates.map((tab) =>
-        fetch("http://localhost:3000/check", {
+        fetch(BACKEND_CHECK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -408,7 +410,7 @@ async function openOrFocusTabForQueueItem(item) {
 
         try {
           const promises = tabsToCheck.map((tab) =>
-            fetch("http://localhost:3000/check", {
+            fetch(BACKEND_CHECK_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

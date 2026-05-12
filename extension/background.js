@@ -1,8 +1,9 @@
 let currentTask = "";
 let startTime = null;
 let transitioningToNextTask = false;
-const BACKEND_CHECK_URL = "http://localhost:3000/check";
-const BACKEND_SUMMARY_URL = "http://localhost:3000/summary";
+const BACKEND_BASE_URL = "https://yumi-focus-ai.azurewebsites.net";
+const BACKEND_CHECK_URL = `${BACKEND_BASE_URL}/check`;
+const BACKEND_SUMMARY_URL = `${BACKEND_BASE_URL}/summary`;
 const recentlyHandledTabIds = new Set();
 
 let sessionLog = {
@@ -884,7 +885,7 @@ setInterval(() => {
         const sessionLog = lastLog?.lastSessionLog || { distractionsSaved: [], tabsAddedToFocus: [] };
         const actualFocusMs = Math.max(0, Date.now() - startTime);
         
-        const summaryResponse = await fetch("http://localhost:3000/summary", {
+        const summaryResponse = await fetch(BACKEND_SUMMARY_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
