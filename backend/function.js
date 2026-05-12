@@ -325,11 +325,12 @@ async function indexSessionToSearch(sessionId, userId, sessionData, ts) {
     task,
     label: String(sessionData?.label || task).trim(),
     timestamp: new Date(ts).toISOString(),
-    ts,
+    ts: new Date(ts).toISOString(),
     url: String(sessionData?.url || "").trim()
   };
 
-  await searchClient.uploadDocuments([document]);
+  const result = await searchClient.uploadDocuments([document]);
+  console.log("[Search] Indexed session:", sessionId, result?.results?.[0]?.succeeded ? "succeeded" : "queued");
   return true;
 }
 
