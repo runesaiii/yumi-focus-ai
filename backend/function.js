@@ -308,11 +308,38 @@ function getModelForRequest(isHighPriority = false) {
 }
 
 // Session persistence endpoints (Cosmos DB with fallback to mock)
+async function indexSessionToSearch(sessionId, userId, sessionData, ts) {
+  if (!searchEnabled || !searchClient) {
+    return false;
+  }
+
+  const task = String(sessionData?.task || sessionData?.label || "").trim();
+  if (!task) {
+    return false;
+  }
+
+  const document = {
+    "@search.action": "upload",
+    id: sessionId,
+    userId,
+    task,
+    label: String(sessionData?.label || task).trim(),
+    timestamp: new Date(ts).toISOString(),
+    ts,
+    url: String(sessionData?.url || "").trim()
+  };
+
+  await searchClient.uploadDocuments([document]);
+  return true;
+}
+
 app.post("/sessions", async (req, res) => {
   const { userId, sessionId, sessionData } = req.body;
   if (!userId || !sessionId || !sessionData) {
     return res.status(400).json({ error: "Missing userId, sessionId, or sessionData" });
   }
+
+  const ts = Date.now();
 
   try {
     if (cosmoEnabled && cosmosContainer) {
@@ -321,12 +348,17 @@ app.post("/sessions", async (req, res) => {
         id: sessionId,
         userId,
         ...sessionData,
-        ts: Date.now()
+        ts
       });
+      try {
+        await indexSessionToSearch(sessionId, userId, sessionData, ts);
+      } catch (searchError) {
+        console.warn("[Search] Failed to index session:", searchError.message);
+      }
       return res.json({ success: true, sessionId, stored: "cosmos-db" });
     } else {
       // Fallback to mock storage
-      sessionStore.set(sessionId, { userId, sessionData, ts: Date.now() });
+      sessionStore.set(sessionId, { userId, sessionData, ts });
       return res.json({ success: true, sessionId, stored: "mock" });
     }
   } catch (error) {
