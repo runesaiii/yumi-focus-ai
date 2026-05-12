@@ -140,7 +140,8 @@ async function classifyTabForTask(task, tab) {
 async function persistSessionToBackend(sessionData) {
   // Optional: Store completed session to backend (Cosmos DB when configured)
   try {
-    const userId = "anonymous"; // TODO: Replace with actual user ID if auth is added
+    const stored = await chrome.storage.local.get(["userId"]);
+    const userId = stored.userId || "anonymous"; // allow configurable userId, fallback to anonymous
     const sessionId = `session-${Date.now()}`;
     
     const response = await fetch(BACKEND_SESSIONS_URL, {

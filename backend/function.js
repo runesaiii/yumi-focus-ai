@@ -337,11 +337,15 @@ app.post("/sessions", async (req, res) => {
 
 app.get("/sessions/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
-  
+  const { userId } = req.query;
+
   try {
     if (cosmoEnabled && cosmosContainer) {
-      // Retrieve from Cosmos DB
-      const { resource: item } = await cosmosContainer.item(sessionId).read();
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId query parameter" });
+      }
+      // Retrieve from Cosmos DB using partition key (userId)
+      const { resource: item } = await cosmosContainer.item(sessionId, userId).read();
       if (!item) {
         return res.status(404).json({ error: "Session not found" });
       }

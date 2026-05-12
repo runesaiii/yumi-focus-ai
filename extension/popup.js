@@ -317,11 +317,14 @@ if (searchToggleBtn && searchPanel && searchSection) {
       searchBtn.disabled = true;
       searchBtn.textContent = "Searching...";
 
-      const response = await fetch(BACKEND_SEARCH_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, userId: "anonymous" })
-      });
+        const stored = await chrome.storage.local.get(["userId"]);
+        const userId = stored.userId || "anonymous";
+
+        const response = await fetch(BACKEND_SEARCH_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, userId })
+        });
 
       if (!response.ok) {
         await showAlert("Search failed or feature not configured yet (Cosmos DB setup required)", "Search Error");
