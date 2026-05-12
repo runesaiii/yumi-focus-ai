@@ -4,6 +4,8 @@ let transitioningToNextTask = false;
 const BACKEND_BASE_URL = "https://yumi-focus-ai.azurewebsites.net";
 const BACKEND_CHECK_URL = `${BACKEND_BASE_URL}/check`;
 const BACKEND_SUMMARY_URL = `${BACKEND_BASE_URL}/summary`;
+const BACKEND_SESSIONS_URL = `${BACKEND_BASE_URL}/sessions`;
+const BACKEND_SEARCH_URL = `${BACKEND_BASE_URL}/search`;
 const recentlyHandledTabIds = new Set();
 
 let sessionLog = {
@@ -110,6 +112,8 @@ function getSuggestionFromTab(tab) {
 }
 
 async function classifyTabForTask(task, tab) {
+  const { aiConsent } = await chrome.storage.local.get('aiConsent');
+  if (!aiConsent?.allowed) return null;
   try {
     const response = await fetch(BACKEND_CHECK_URL, {
       method: "POST",
@@ -131,6 +135,33 @@ async function classifyTabForTask(task, tab) {
   } catch (error) {
     return null;
   }
+}
+
+async function persistSessionToBackend(sessionData) {
+  // Optional: Store completed session to backend (Cosmos DB when configured)
+  try {
+    const userId = "anonymous"; // TODO: Replace with actual user ID if auth is added
+    const sessionId = `session-${Date.now()}`;
+    
+    const response = await fetch(BACKEND_SESSIONS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        sessionId,
+        sessionData
+      })
+    });
+
+    if (response.ok) {
+      console.log("[Sessions] Session persisted:", sessionId);
+      return sessionId;
+    }
+  } catch (error) {
+    // Silent fail; session persistence is optional
+    console.warn("[Sessions] Persistence failed (optional feature):", error.message);
+  }
+  return null;
 }
 
 chrome.storage.local.get(["currentTask", "startTime"], (data) => {
@@ -880,12 +911,15 @@ setInterval(() => {
 
       // Fetch summary to include in congrats popup
       let summaryText = "";
+      let sessionId = null;
       try {
         const lastLog = await chrome.storage.local.get("lastSessionLog");
         const sessionLog = lastLog?.lastSessionLog || { distractionsSaved: [], tabsAddedToFocus: [] };
         const actualFocusMs = Math.max(0, Date.now() - startTime);
         
-        const summaryResponse = await fetch(BACKEND_SUMMARY_URL, {
+        const { aiConsent } = await chrome.storage.local.get('aiConsent');
+        if (aiConsent?.allowed) {
+          const summaryResponse = await fetch(BACKEND_SUMMARY_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -895,15 +929,26 @@ setInterval(() => {
             distractionsSaved: sessionLog.distractionsSaved,
             tabsAdded: sessionLog.tabsAddedToFocus
           })
-        });
+          });
 
-        if (summaryResponse.ok) {
-          const summary = await summaryResponse.json();
-          summaryText = `${summary.summary || "Great focus session!"}`;
-          if (summary.nextStep) {
-            summaryText += `\n\n${summary.nextStep}`;
+          if (summaryResponse.ok) {
+            const summary = await summaryResponse.json();
+            summaryText = `${summary.summary || "Great focus session!"}`;
+            if (summary.nextStep) {
+              summaryText += `\n\n${summary.nextStep}`;
+            }
           }
         }
+
+        // Persist session to backend (optional Cosmos DB feature)
+        sessionId = await persistSessionToBackend({
+          task,
+          focusMinutesPlanned: focusMinutes,
+          actualFocusMs,
+          distractionsSaved: sessionLog.distractionsSaved,
+          tabsAddedToFocus: sessionLog.tabsAddedToFocus,
+          timestamp: Date.now()
+        });
       } catch (error) {
         // Silently continue without summary if fetch fails
       }

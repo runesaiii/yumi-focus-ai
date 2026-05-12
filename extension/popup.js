@@ -9,14 +9,23 @@ const sessionSection = document.getElementById("sessionSection");
 const distractionSection = document.getElementById("distractionSection");
 const queueToggleBtn = document.getElementById("queueToggleBtn");
 const queueSection = document.querySelector(".queue-section");
+const searchToggleBtn = document.getElementById("searchToggleBtn");
+const searchPanel = document.getElementById("searchPanel");
+const searchSection = document.querySelector(".search-section");
+const searchBtn = document.getElementById("searchBtn");
+const searchQuery = document.getElementById("searchQuery");
+const searchResults = document.getElementById("searchResults");
+const resultsList = document.getElementById("resultsList");
 const dialogOverlay = document.getElementById("dialogOverlay");
 const dialogBadge = document.getElementById("dialogBadge");
 const dialogTitle = document.getElementById("dialogTitle");
 const dialogMessage = document.getElementById("dialogMessage");
 const dialogInput = document.getElementById("dialogInput");
 const dialogActions = document.getElementById("dialogActions");
+const aiConsentBtn = document.getElementById("aiConsentBtn");
 const BACKEND_BASE_URL = "https://yumi-focus-ai.azurewebsites.net";
 const BACKEND_CHECK_URL = `${BACKEND_BASE_URL}/check`;
+const BACKEND_SEARCH_URL = `${BACKEND_BASE_URL}/search`;
 
 let timerInterval = null;
 let dialogResolver = null;
@@ -111,6 +120,52 @@ async function showPrompt(message, defaultValue = "", title = "Enter text") {
   });
 }
 
+async function getAiConsent() {
+  const data = await chrome.storage.local.get("aiConsent");
+  return data.aiConsent || { allowed: false, ts: null };
+}
+
+async function setAiConsent(allowed) {
+  await chrome.storage.local.set({ aiConsent: { allowed, ts: Date.now() } });
+  await updateAiConsentButton();
+}
+
+async function updateAiConsentButton() {
+  if (!aiConsentBtn) return;
+  const consent = await getAiConsent();
+  aiConsentBtn.textContent = consent.allowed ? "AI: Enabled" : "AI: Disabled";
+  aiConsentBtn.title = consent.allowed
+    ? "AI features are enabled. Click to revoke consent."
+    : "AI features are disabled. Click to enable consent.";
+  aiConsentBtn.classList.toggle("btn-primary", consent.allowed);
+  aiConsentBtn.classList.toggle("btn-secondary", !consent.allowed);
+}
+
+if (aiConsentBtn) {
+  aiConsentBtn.addEventListener("click", async () => {
+    const consent = await getAiConsent();
+    if (consent.allowed) {
+      const revoke = await showConfirm(
+        "Revoke AI consent? This will disable AI warnings and summaries until you enable them again.",
+        "Disable AI features"
+      );
+      if (revoke) {
+        await setAiConsent(false);
+        await showAlert("AI features are now disabled.", "Consent updated");
+      }
+    } else {
+      const enable = await showConfirm(
+        "Enable AI features? This will send page titles and site domains (URLs are redacted) to Azure OpenAI for warnings and summaries.",
+        "Enable AI features"
+      );
+      if (enable) {
+        await setAiConsent(true);
+        await showAlert("AI features are now enabled.", "Consent updated");
+      }
+    }
+  });
+}
+
 // Toggle Queued Tasks section visibility
 queueToggleBtn.addEventListener("click", () => {
   const panel = distractionSection;
@@ -189,6 +244,123 @@ queueToggleBtn.addEventListener("click", () => {
     panel.addEventListener("transitionend", onTransitionEnd);
   }
 });
+
+// Toggle Search section visibility
+if (searchToggleBtn && searchPanel && searchSection) {
+  searchToggleBtn.addEventListener("click", () => {
+    const panel = searchPanel;
+    const btn = searchToggleBtn;
+    const container = searchSection;
+
+    if (panel && !panel.dataset.origPadding) {
+      const cs = getComputedStyle(panel);
+      panel.dataset.origPadding = `${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}`;
+    }
+
+    const isOpen = panel.classList.contains("open");
+
+    if (!isOpen) {
+      panel.style.display = "block";
+      requestAnimationFrame(() => {
+        panel.style.overflow = "hidden";
+        panel.style.maxHeight = panel.scrollHeight + "px";
+        panel.style.opacity = "1";
+        panel.style.padding = panel.dataset.origPadding || "14px";
+        panel.classList.add("open");
+        if (container) {
+          container.style.overflow = "hidden";
+          container.style.maxHeight = container.scrollHeight + panel.scrollHeight + "px";
+          container.style.margin = "12px 0";
+        }
+        btn.classList.add("active");
+        btn.textContent = "Hide Search";
+        btn.setAttribute("aria-expanded", "true");
+      });
+    } else {
+      panel.style.overflow = "hidden";
+      panel.style.maxHeight = panel.scrollHeight + "px";
+      panel.style.opacity = "1";
+      requestAnimationFrame(() => {
+        panel.style.maxHeight = "0px";
+        panel.style.opacity = "0";
+        panel.style.padding = "0px 12px";
+        if (container) {
+          container.style.overflow = "hidden";
+          container.style.maxHeight = searchToggleBtn.offsetHeight + "px";
+          container.style.margin = "0";
+        }
+      });
+
+      const onTransitionEnd = (e) => {
+        if (e.propertyName === "max-height") {
+          panel.style.display = "none";
+          panel.classList.remove("open");
+          panel.style.maxHeight = "";
+          panel.style.overflow = "";
+          panel.removeEventListener("transitionend", onTransitionEnd);
+        }
+      };
+
+      panel.addEventListener("transitionend", onTransitionEnd);
+    }
+  });
+
+  // Handle search button click
+  searchBtn.addEventListener("click", async () => {
+    const query = searchQuery.value.trim();
+    if (!query) {
+      await showAlert("Please enter a search term", "Empty search");
+      return;
+    }
+
+    try {
+      searchBtn.disabled = true;
+      searchBtn.textContent = "Searching...";
+
+      const response = await fetch(BACKEND_SEARCH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, userId: "anonymous" })
+      });
+
+      if (!response.ok) {
+        await showAlert("Search failed or feature not configured yet (Cosmos DB setup required)", "Search Error");
+        searchBtn.disabled = false;
+        searchBtn.textContent = "Search";
+        return;
+      }
+
+      const data = await response.json();
+      const results = data.results || [];
+
+      if (results.length === 0) {
+        resultsList.innerHTML = "<li style=\"padding: 12px; text-align: center; color: #94a3b8;\">No results found</li>";
+        searchResults.style.display = "block";
+      } else {
+        resultsList.innerHTML = results.map(r => `
+          <li class="search-result-item">
+            <span class="search-result-label">${escapeHtml(r.label || r.task)}</span>
+            <span class="search-result-type">${escapeHtml(r.type || "task")}</span>
+            ${r.url ? `<span class="search-result-type">📍 ${escapeHtml(r.url)}</span>` : ""}
+          </li>
+        `).join("");
+        searchResults.style.display = "block";
+      }
+    } catch (error) {
+      await showAlert(`Search failed: ${error.message}`, "Error");
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = "Search";
+    }
+  });
+
+  // Allow Enter key to search
+  searchQuery.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      searchBtn.click();
+    }
+  });
+}
 
 function isRestrictedUrl(url) {
   const value = String(url || "");
@@ -343,7 +515,10 @@ async function findRelevantOpenTabForTask(taskLabel) {
 
     if (candidates.length === 0) return bestTab || null;
 
-    // Parallelize backend calls with 2-second timeout
+      const { aiConsent } = await chrome.storage.local.get('aiConsent');
+      if (!aiConsent?.allowed) return bestTab || null;
+
+      // Parallelize backend calls with 2-second timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
 
@@ -402,40 +577,43 @@ async function openOrFocusTabForQueueItem(item) {
   // Second pass: semantic matching using backend classification (if no exact match and no URL saved)
   if (!matchingTab && !searchUrl && searchLabel) {
     try {
-      const tabsToCheck = existingTabs.filter((tab) => !isRestrictedUrl(tab.url));
-      if (tabsToCheck.length > 0) {
-        // Parallelize backend calls with 2-second timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const { aiConsent } = await chrome.storage.local.get('aiConsent');
+      if (aiConsent?.allowed) {
+        const tabsToCheck = existingTabs.filter((tab) => !isRestrictedUrl(tab.url));
+        if (tabsToCheck.length > 0) {
+          // Parallelize backend calls with 2-second timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        try {
-          const promises = tabsToCheck.map((tab) =>
-            fetch(BACKEND_CHECK_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                task: queueItem.label,
-                tabTitle: String(tab.title || ""),
-                url: String(tab.url || "")
-              }),
-              signal: controller.signal
-            })
-              .then((r) => (r.ok ? r.json() : null))
-              .then((classification) => (classification?.isRelevant ? tab : null))
-              .catch(() => null)
-          );
+          try {
+            const promises = tabsToCheck.map((tab) =>
+              fetch(BACKEND_CHECK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  task: queueItem.label,
+                  tabTitle: String(tab.title || ""),
+                  url: String(tab.url || "")
+                }),
+                signal: controller.signal
+              })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((classification) => (classification?.isRelevant ? tab : null))
+                .catch(() => null)
+            );
 
-          const results = await Promise.allSettled(promises);
-          for (const result of results) {
-            if (result.status === "fulfilled" && result.value) {
-              controller.abort();
-              matchingTab = result.value;
-              break;
+            const results = await Promise.allSettled(promises);
+            for (const result of results) {
+              if (result.status === "fulfilled" && result.value) {
+                controller.abort();
+                matchingTab = result.value;
+                break;
+              }
             }
+          } finally {
+            clearTimeout(timeoutId);
+            controller.abort();
           }
-        } finally {
-          clearTimeout(timeoutId);
-          controller.abort();
         }
       }
     } catch (error) {
@@ -822,6 +1000,21 @@ async function renderQueue() {
     list.appendChild(li);
   });
 }
+
+// Ensure user consent for AI features on first run
+(async function ensureAiConsent() {
+  try {
+    const { aiConsent } = await chrome.storage.local.get('aiConsent');
+    if (aiConsent === undefined) {
+      const message = 'Enable AI features? This will send page titles and site domains (URLs are redacted) to an external AI service (Azure OpenAI) to generate relevance warnings and session summaries.';
+      const accepted = await showConfirm(message, 'Enable AI features');
+      await chrome.storage.local.set({ aiConsent: { allowed: Boolean(accepted), ts: Date.now() } });
+    }
+    await updateAiConsentButton();
+  } catch (e) {
+    // ignore storage errors
+  }
+})();
 
 renderUI();
 renderQueue();

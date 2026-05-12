@@ -3,6 +3,23 @@ const express = require("express");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 
+// Optional Cosmos DB import (graceful fallback if not installed)
+let CosmosClient;
+try {
+  CosmosClient = require("@azure/cosmos").CosmosClient;
+} catch (e) {
+  console.warn("[Cosmos] @azure/cosmos not installed; using mock session storage");
+}
+
+// Optional Azure AI Search import (graceful fallback if not installed)
+let SearchClient, AzureKeyCredential;
+try {
+  SearchClient = require("@azure/search-documents").SearchClient;
+  AzureKeyCredential = require("@azure/search-documents").AzureKeyCredential;
+} catch (e) {
+  console.warn("[Search] @azure/search-documents not installed; using mock search");
+}
+
 const app = express();
 app.use(express.json());
 
@@ -48,6 +65,54 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
+
+// Initialize Cosmos DB client (optional)
+let cosmosContainer = null;
+let cosmoEnabled = false;
+
+(async () => {
+  if (CosmosClient && process.env.COSMOS_DB_CONNECTION_STRING) {
+    try {
+      const client = new CosmosClient(process.env.COSMOS_DB_CONNECTION_STRING);
+      const databaseId = process.env.COSMOS_DB_DATABASE || "yumi";
+      const containerId = "sessions";
+      
+      const database = client.database(databaseId);
+      cosmosContainer = database.container(containerId);
+      
+      // Verify the container exists (will throw if not)
+      await cosmosContainer.read();
+      cosmoEnabled = true;
+      console.log(`[Cosmos] Connected to database "${databaseId}", container "${containerId}"`);
+    } catch (error) {
+      console.warn(`[Cosmos] Failed to initialize: ${error.message}`);
+      console.warn("[Cosmos] Falling back to mock session storage");
+    }
+  } else if (CosmosClient) {
+    console.warn("[Cosmos] COSMOS_DB_CONNECTION_STRING not set; using mock session storage");
+  }
+})();
+
+// Initialize Azure AI Search client (optional)
+let searchClient = null;
+let searchEnabled = false;
+
+if (SearchClient && AzureKeyCredential && process.env.AI_SEARCH_ENDPOINT && process.env.AI_SEARCH_ADMIN_KEY) {
+  try {
+    const credential = new AzureKeyCredential(process.env.AI_SEARCH_ADMIN_KEY);
+    searchClient = new SearchClient(
+      process.env.AI_SEARCH_ENDPOINT,
+      "tasks-index",
+      credential
+    );
+    searchEnabled = true;
+    console.log(`[Search] Connected to Azure AI Search at ${process.env.AI_SEARCH_ENDPOINT}`);
+  } catch (error) {
+    console.warn(`[Search] Failed to initialize: ${error.message}`);
+  }
+} else if (SearchClient && AzureKeyCredential) {
+  console.warn("[Search] AI_SEARCH_ENDPOINT or AI_SEARCH_ADMIN_KEY not set; using mock search");
+}
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -233,6 +298,136 @@ app.get("/health", (_req, res) => {
 
 app.use("/check", apiLimiter);
 app.use("/summary", apiLimiter);
+
+// Mock session storage (replace with Cosmos DB when configured)
+const sessionStore = new Map();
+
+function getModelForRequest(isHighPriority = false) {
+  // Multi-model routing: use gpt-4 for high-priority, gpt-3.5 for standard
+  return isHighPriority ? "gpt-4" : "gpt-3.5-turbo";
+}
+
+// Session persistence endpoints (Cosmos DB with fallback to mock)
+app.post("/sessions", async (req, res) => {
+  const { userId, sessionId, sessionData } = req.body;
+  if (!userId || !sessionId || !sessionData) {
+    return res.status(400).json({ error: "Missing userId, sessionId, or sessionData" });
+  }
+
+  try {
+    if (cosmoEnabled && cosmosContainer) {
+      // Store in Cosmos DB
+      await cosmosContainer.items.create({
+        id: sessionId,
+        userId,
+        ...sessionData,
+        ts: Date.now()
+      });
+      return res.json({ success: true, sessionId, stored: "cosmos-db" });
+    } else {
+      // Fallback to mock storage
+      sessionStore.set(sessionId, { userId, sessionData, ts: Date.now() });
+      return res.json({ success: true, sessionId, stored: "mock" });
+    }
+  } catch (error) {
+    console.warn("Session storage failed:", error.message);
+    res.status(500).json({ error: "Failed to store session" });
+  }
+});
+
+app.get("/sessions/:sessionId", async (req, res) => {
+  const { sessionId } = req.params;
+  
+  try {
+    if (cosmoEnabled && cosmosContainer) {
+      // Retrieve from Cosmos DB
+      const { resource: item } = await cosmosContainer.item(sessionId).read();
+      if (!item) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      return res.json(item);
+    } else {
+      // Fallback to mock storage
+      const storedSession = sessionStore.get(sessionId);
+      if (!storedSession) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      return res.json(storedSession);
+    }
+  } catch (error) {
+    console.warn("Session retrieval failed:", error.message);
+    res.status(500).json({ error: "Failed to retrieve session" });
+  }
+});
+
+app.post("/search", async (req, res) => {
+  const { query, userId } = req.body;
+  if (!query) {
+    return res.status(400).json({ error: "Missing query" });
+  }
+
+  try {
+    if (searchEnabled && searchClient) {
+      // Search Azure AI Search
+      try {
+        const results = await searchClient.search(query, {
+          filter: userId ? `userId eq '${userId.replace(/'/g, "''")}'` : undefined,
+          top: 20
+        });
+
+        const resultsList = [];
+        for await (const result of results.results) {
+          resultsList.push({
+            type: "task",
+            label: result.document.task || result.document.label || "Unnamed task",
+            url: result.document.url || "",
+            timestamp: result.document.timestamp || result.document.ts,
+            score: result.score
+          });
+        }
+
+        return res.json({ results: resultsList, source: "azure-ai-search", count: resultsList.length });
+      } catch (searchError) {
+        console.warn(`[Search] AI Search query failed: ${searchError.message}`);
+        // Fall through to mock search below
+      }
+    }
+
+    // Fallback: Simple keyword matching across stored sessions
+    const results = [];
+    sessionStore.forEach((session) => {
+      if (!userId || session.userId === userId) {
+        const data = session.sessionData;
+        if (data.task?.toLowerCase().includes(query.toLowerCase())) {
+          results.push({ 
+            type: "task", 
+            label: data.task, 
+            timestamp: session.ts,
+            score: 0.8
+          });
+        }
+        if (Array.isArray(data.queue)) {
+          data.queue.forEach(item => {
+            if (item.label?.toLowerCase().includes(query.toLowerCase())) {
+              results.push({ 
+                type: "queued", 
+                label: item.label, 
+                url: item.url, 
+                timestamp: session.ts,
+                score: 0.6
+              });
+            }
+          });
+        }
+      }
+    });
+    
+    res.json({ results, source: "mock-search", count: results.length });
+  } catch (error) {
+    console.warn("Search failed:", error.message);
+    res.status(500).json({ error: "Search failed", results: [], source: "error" });
+  }
+});
 
 app.post("/check", async (req, res) => {
   const task = String(req.body?.task || req.body?.currentTask || "").trim();

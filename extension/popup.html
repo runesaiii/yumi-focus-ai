@@ -10,6 +10,7 @@
   <header class="app-header">
     <h1>🎯 Yumi Focus AI</h1>
     <p class="tagline">Stay focused. Capture distractions.</p>
+    <button id="aiConsentBtn" class="btn btn-small btn-secondary" type="button">AI: Loading...</button>
   </header>
 
   <div id="startSection" class="section">
@@ -57,6 +58,21 @@
 
       <div class="queue-list">
         <ul id="queue"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="search-section">
+    <button id="searchToggleBtn" class="btn btn-queue">🔍 Search History (Beta)</button>
+    <div id="searchPanel" style="display:none;" class="search-panel">
+      <h3>🔍 Search Historical Tasks</h3>
+      <p class="text-muted">Find tasks you've worked on before (when Cosmos DB is configured)</p>
+      <div class="form-group">
+        <input id="searchQuery" type="text" placeholder="Search tasks, sites, etc." />
+        <button id="searchBtn" class="btn btn-primary">Search</button>
+      </div>
+      <div id="searchResults" class="search-results" style="display:none;">
+        <ul id="resultsList"></ul>
       </div>
     </div>
   </section>
