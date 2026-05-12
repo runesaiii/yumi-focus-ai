@@ -334,6 +334,55 @@ async function indexSessionToSearch(sessionId, userId, sessionData, ts) {
   return true;
 }
 
+async function searchSessionsInCosmos(query, userId) {
+  if (!cosmoEnabled || !cosmosContainer) {
+    return [];
+  }
+
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const querySpec = userId
+    ? {
+        query: "SELECT * FROM c WHERE c.userId = @userId",
+        parameters: [{ name: "@userId", value: userId }]
+      }
+    : {
+        query: "SELECT * FROM c"
+      };
+
+  const { resources } = await cosmosContainer.items.query(querySpec).fetchAll();
+  const results = [];
+
+  for (const session of resources) {
+    const task = String(session?.task || session?.label || "").toLowerCase();
+    const queue = Array.isArray(session?.queue) ? session.queue : [];
+
+    if (task && task.includes(normalizedQuery)) {
+      results.push({
+        type: "task",
+        label: String(session?.task || session?.label || "Unnamed task"),
+        timestamp: session?.timestamp || session?.ts,
+        score: 0.8
+      });
+      continue;
+    }
+
+    for (const item of queue) {
+      const itemLabel = String(item?.label || "").toLowerCase();
+      if (itemLabel && itemLabel.includes(normalizedQuery)) {
+        results.push({
+          type: "queued",
+          label: String(item?.label || ""),
+          url: String(item?.url || ""),
+          timestamp: session?.timestamp || session?.ts,
+          score: 0.6
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
 app.post("/sessions", async (req, res) => {
   const { userId, sessionId, sessionData } = req.body;
   if (!userId || !sessionId || !sessionData) {
@@ -423,9 +472,22 @@ app.post("/search", async (req, res) => {
           });
         }
 
-        return res.json({ results: resultsList, source: "azure-ai-search", count: resultsList.length });
+        if (resultsList.length > 0) {
+          return res.json({ results: resultsList, source: "azure-ai-search", count: resultsList.length });
+        }
+
+        const cosmosResults = await searchSessionsInCosmos(query, userId);
+        if (cosmosResults.length > 0) {
+          return res.json({ results: cosmosResults, source: "cosmos-fallback", count: cosmosResults.length });
+        }
+
+        return res.json({ results: [], source: "azure-ai-search", count: 0 });
       } catch (searchError) {
         console.warn(`[Search] AI Search query failed: ${searchError.message}`);
+        const cosmosResults = await searchSessionsInCosmos(query, userId);
+        if (cosmosResults.length > 0) {
+          return res.json({ results: cosmosResults, source: "cosmos-fallback", count: cosmosResults.length });
+        }
         // Fall through to mock search below
       }
     }
