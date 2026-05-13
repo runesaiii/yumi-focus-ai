@@ -253,7 +253,7 @@ input[type="number"]:focus {
 .dialog-card {
   width: 100%;
   max-width: 340px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 18px;
   padding: 18px;
@@ -296,6 +296,22 @@ input[type="number"]:focus {
 .dialog-card input {
   width: 100%;
   margin-top: 14px;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.dialog-card input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  background: #ffffff;
 }
 
 .dialog-actions {
@@ -378,7 +394,7 @@ input[type="number"]:focus {
 }
 
 .queue-section {
-  margin: 12px 0;
+  margin: 12px 0 4px 0;
 }
 
 /* Animate the whole queue section (button + panel) so the gray area collapses */
@@ -513,7 +529,7 @@ ul {
 
 /* Search Section */
 .search-section {
-  margin: 12px 0;
+  margin: 4px 0 12px 0;
   transition: max-height 320ms cubic-bezier(.2,.9,.2,1), padding 260ms ease;
   overflow: visible;
 }
@@ -525,7 +541,7 @@ ul {
 #searchToggleBtn {
   width: calc(100% - 24px);
   margin: 12px;
-  text-align: left;
+  text-align: center;
 }
 
 .search-panel {
