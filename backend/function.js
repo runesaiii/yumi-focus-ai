@@ -336,6 +336,9 @@ async function indexSessionToSearch(sessionId, userId, sessionData, ts) {
 
 function buildSessionSearchMetadata(session) {
   const actualFocusMs = Number(session?.actualFocusMs || session?.sessionData?.actualFocusMs || 0);
+  // Prefer an explicit focusTabCount if present (total tabs in focus),
+  // otherwise fall back to arrays of tabs added during the session.
+  const explicitCount = Number(session?.focusTabCount || session?.sessionData?.focusTabCount || 0);
   const tabsAddedSource =
     session?.tabsAddedToFocus ||
     session?.tabsAdded ||
@@ -356,7 +359,7 @@ function buildSessionSearchMetadata(session) {
 
   return {
     durationMs: Number.isFinite(actualFocusMs) ? actualFocusMs : 0,
-    tabsAddedCount: tabsAdded.length,
+    tabsAddedCount: explicitCount > 0 ? explicitCount : tabsAdded.length,
     completedAt: completedAtValue ? new Date(completedAtValue).toISOString() : null
   };
 }

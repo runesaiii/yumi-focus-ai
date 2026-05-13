@@ -889,7 +889,7 @@ async function showSummaryPopup(summaryText, nextStepText) {
 // Timer checker
 setInterval(() => {
   chrome.storage.local
-    .get(["sessionActive", "sessionPaused", "endTime", "focusMinutes", "currentTask", "queue", "completionPromptActive", "startTime"])
+    .get(["sessionActive", "sessionPaused", "endTime", "focusMinutes", "currentTask", "queue", "completionPromptActive", "startTime", "focusTabIds"])
     .then(async (data) => {
       if (!data.sessionActive || !data.endTime) return;
 
@@ -940,12 +940,16 @@ setInterval(() => {
         }
 
         // Persist session to backend (optional Cosmos DB feature)
+        const focusTabCount = Array.isArray(data.focusTabIds)
+          ? data.focusTabIds.length
+          : (Array.isArray(sessionLog.tabsAddedToFocus) ? sessionLog.tabsAddedToFocus.length : 0);
         sessionId = await persistSessionToBackend({
           task,
           focusMinutesPlanned: focusMinutes,
           actualFocusMs,
-          distractionsSaved: sessionLog.distractionsSaved,
-          tabsAddedToFocus: sessionLog.tabsAddedToFocus,
+          distractionsSaved: sessionLog.distractionsSaved || [],
+          tabsAddedToFocus: sessionLog.tabsAddedToFocus || [],
+          focusTabCount,
           timestamp: Date.now()
         });
       } catch (error) {
