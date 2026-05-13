@@ -30,6 +30,17 @@ const BACKEND_SEARCH_URL = `${BACKEND_BASE_URL}/search`;
 let timerInterval = null;
 let dialogResolver = null;
 
+function escapeHtml(text) {
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;"
+  };
+  return String(text).replace(/[&<>"']/g, (char) => map[char]);
+}
+
 function closeDialog(result) {
   if (dialogOverlay) dialogOverlay.style.display = "none";
   dialogActions.innerHTML = "";
