@@ -41,6 +41,16 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (char) => map[char]);
 }
 
+function resetSearchSectionLayout() {
+  if (!searchToggleBtn || !searchPanel || !searchSection) return;
+  if (!searchPanel.classList.contains("open")) return;
+
+  searchPanel.style.maxHeight = "none";
+  searchPanel.style.overflow = "visible";
+  searchSection.style.maxHeight = "none";
+  searchSection.style.overflow = "visible";
+}
+
 function closeDialog(result) {
   if (dialogOverlay) dialogOverlay.style.display = "none";
   dialogActions.innerHTML = "";
@@ -286,6 +296,10 @@ if (searchToggleBtn && searchPanel && searchSection) {
         btn.classList.add("active");
         btn.textContent = "Hide Search";
         btn.setAttribute("aria-expanded", "true");
+
+        window.setTimeout(() => {
+          resetSearchSectionLayout();
+        }, 340);
       });
     } else {
       panel.style.overflow = "hidden";
@@ -308,6 +322,16 @@ if (searchToggleBtn && searchPanel && searchSection) {
           panel.classList.remove("open");
           panel.style.maxHeight = "";
           panel.style.overflow = "";
+          panel.style.padding = "";
+          panel.style.opacity = "";
+          btn.classList.remove("active");
+          btn.textContent = "Search History (Beta)";
+          btn.setAttribute("aria-expanded", "false");
+          if (container) {
+            container.style.maxHeight = "";
+            container.style.overflow = "";
+            container.style.margin = "";
+          }
           panel.removeEventListener("transitionend", onTransitionEnd);
         }
       };
@@ -360,6 +384,9 @@ if (searchToggleBtn && searchPanel && searchSection) {
         `).join("");
         searchResults.style.display = "block";
       }
+
+      resetSearchSectionLayout();
+      searchResults.scrollIntoView({ block: "nearest", behavior: "smooth" });
     } catch (error) {
       await showAlert(`Search failed: ${error.message}`, "Error");
     } finally {
