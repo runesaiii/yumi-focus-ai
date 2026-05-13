@@ -526,11 +526,82 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
 
     const mountDialog = ({ badge, title, message, buttons, showInput = false, defaultValue = "" }) =>
       new Promise((resolve) => {
-        ensureStyles();
+        // Remove any old global styles created by previous versions to avoid conflicts
+        try { document.getElementById(STYLE_ID)?.remove(); } catch (e) {}
         document.getElementById(OVERLAY_ID)?.remove();
 
+        // Host overlay element in document; content is isolated inside a Shadow DOM
         const overlay = document.createElement("div");
         overlay.id = OVERLAY_ID;
+        overlay.style.all = "initial";
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "2147483647";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.padding = "20px";
+
+        // Attach shadow root to fully scope styles away from page CSS
+        const shadow = overlay.attachShadow({ mode: "closed" });
+
+        const container = document.createElement("div");
+        container.className = "yumi-host";
+
+        // Scoped styles inside shadow DOM
+        const style = document.createElement("style");
+        style.textContent = `
+          :host, :host(*) { box-sizing: border-box; }
+          .overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.52);
+            backdrop-filter: blur(10px);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+          }
+          .yumi-dialog-card {
+            width: min(100%, 380px);
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            box-shadow: 0 28px 70px rgba(15, 23, 42, 0.34);
+            padding: 18px;
+            color: #0f172a;
+          }
+          .yumi-dialog-badge { display:inline-flex; align-items:center; justify-content:center; min-width:48px; height:26px; padding:0 10px; margin-bottom:12px; border-radius:999px; background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); color:#fff; font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
+          h2 { margin:0 0 10px 0; font-size:18px; line-height:1.2; }
+          p { margin:0; font-size:13px; line-height:1.55; color:#334155; white-space:pre-wrap; }
+          .yumi-dialog-input {
+            width: 100%;
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-sizing: border-box;
+            max-width: 100%;
+            min-width: 0;
+            background: #ffffff;
+            color: #0f172a;
+            caret-color: #0f172a;
+            outline: none;
+            font-size: 14px;
+            line-height: 1.4;
+            -webkit-text-size-adjust: 100%;
+          }
+          .yumi-dialog-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.12); }
+          .yumi-dialog-actions { display:flex; gap:10px; margin-top:16px; }
+          .yumi-dialog-button { flex:1; border:none; border-radius:12px; padding:10px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+          .yumi-dialog-button.primary { background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); color:#fff; }
+          .yumi-dialog-button.secondary { background: linear-gradient(180deg,#ffffff 0%,#f1f5f9 100%); color:#1e293b; border:1px solid #d8e0ea; }
+        `;
+
+        // Build dialog content inside shadow
+        const overlayRoot = document.createElement("div");
+        overlayRoot.className = "overlay";
 
         const card = document.createElement("div");
         card.className = "yumi-dialog-card";
@@ -555,7 +626,7 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
         actions.className = "yumi-dialog-actions";
 
         const close = (value) => {
-          overlay.remove();
+          try { overlay.remove(); } catch (e) {}
           resolve(value);
         };
 
@@ -588,12 +659,18 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
         card.append(badgeEl, titleEl, messageEl);
         if (showInput) card.appendChild(input);
         card.appendChild(actions);
-        overlay.appendChild(card);
+        overlayRoot.appendChild(card);
+
+        // Attach everything to shadow root
+        shadow.appendChild(style);
+        shadow.appendChild(overlayRoot);
+        shadow.appendChild(container);
+
         document.body.appendChild(overlay);
 
+        // focus input after mounted
         requestAnimationFrame(() => {
           if (showInput) input.focus();
-          else buttons[0]?.buttonEl?.focus?.();
         });
       });
 
