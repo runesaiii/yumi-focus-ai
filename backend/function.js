@@ -617,6 +617,60 @@ app.post("/summary", async (req, res) => {
   });
 });
 
+// Admin: Backfill all Cosmos sessions into Azure AI Search
+// Protect with BACKFILL_ADMIN_KEY (set in App Service / .env)
+app.post("/admin/backfill-search", async (req, res) => {
+  const adminKey = req.headers["x-admin-key"] || req.body?.adminKey;
+  if (!process.env.BACKFILL_ADMIN_KEY || adminKey !== process.env.BACKFILL_ADMIN_KEY) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (!cosmoEnabled || !cosmosContainer) {
+    return res.status(400).json({ error: "Cosmos DB not configured" });
+  }
+  if (!searchEnabled || !searchClient) {
+    return res.status(400).json({ error: "AI Search not configured" });
+  }
+
+  try {
+    const querySpec = { query: "SELECT * FROM c" };
+    const { resources } = await cosmosContainer.items.query(querySpec).fetchAll();
+    if (!Array.isArray(resources) || resources.length === 0) {
+      return res.json({ attempted: 0, indexed: 0, total: 0 });
+    }
+
+    const docs = resources.map((s) => ({
+      id: String(s.id),
+      userId: String(s.userId || ""),
+      task: String(s.task || s.label || "").slice(0, 400),
+      label: String(s.label || s.task || "").slice(0, 400),
+      timestamp: new Date(s.ts || Date.now()).toISOString(),
+      ts: new Date(s.ts || Date.now()).toISOString(),
+      url: String(s.url || "")
+    }));
+
+    let attempted = 0;
+    let indexed = 0;
+    const batchSize = 100;
+
+    for (let i = 0; i < docs.length; i += batchSize) {
+      const batch = docs.slice(i, i + batchSize);
+      attempted += batch.length;
+      const result = await searchClient.uploadDocuments(batch);
+      const succeeded = Array.isArray(result?.results)
+        ? result.results.filter((r) => r?.succeeded).length
+        : batch.length;
+      indexed += succeeded;
+      console.log(`[Backfill] Batch ${Math.floor(i / batchSize) + 1}: ${succeeded}/${batch.length}`);
+    }
+
+    return res.json({ attempted, indexed, total: docs.length });
+  } catch (err) {
+    console.warn("[Backfill] Error:", err?.message || err);
+    return res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
 const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
