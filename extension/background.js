@@ -889,7 +889,7 @@ async function showSummaryPopup(summaryText, nextStepText) {
 // Timer checker
 setInterval(() => {
   chrome.storage.local
-    .get(["sessionActive", "sessionPaused", "endTime", "focusMinutes", "currentTask", "queue", "completionPromptActive"])
+    .get(["sessionActive", "sessionPaused", "endTime", "focusMinutes", "currentTask", "queue", "completionPromptActive", "startTime"])
     .then(async (data) => {
       if (!data.sessionActive || !data.endTime) return;
 
@@ -908,15 +908,13 @@ setInterval(() => {
       const firstItem = normalizeQueueItem(queue[0]);
       const nextLabel = firstItem.label || "No queued task";
       const focusMinutes = Number.parseInt(data.focusMinutes, 10) || 25;
-      const startTime = Number(data.startTime || 0);
+      const startTimeValue = Number(data.startTime || 0);
 
       // Fetch summary to include in congrats popup
       let summaryText = "";
       let sessionId = null;
       try {
-        const lastLog = await chrome.storage.local.get("lastSessionLog");
-        const sessionLog = lastLog?.lastSessionLog || { distractionsSaved: [], tabsAddedToFocus: [] };
-        const actualFocusMs = Math.max(0, Date.now() - startTime);
+        const actualFocusMs = Math.max(0, Date.now() - startTimeValue);
         
         const { aiConsent } = await chrome.storage.local.get('aiConsent');
         if (aiConsent?.allowed) {
@@ -927,8 +925,8 @@ setInterval(() => {
             task,
             focusMinutesPlanned: focusMinutes,
             actualFocusMs,
-            distractionsSaved: sessionLog.distractionsSaved,
-            tabsAdded: sessionLog.tabsAddedToFocus
+            distractionsSaved: sessionLog.distractionsSaved || [],
+            tabsAdded: sessionLog.tabsAddedToFocus || []
           })
           });
 
