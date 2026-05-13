@@ -473,13 +473,19 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
           padding: 10px 12px;
           border-radius: 12px;
           border: 1px solid #cbd5e1;
+          box-sizing: border-box;
+          max-width: 100%;
+          min-width: 0;
+          background: #ffffff;
           font: inherit;
           color: #0f172a;
+          caret-color: #0f172a;
           outline: none;
         }
         #${OVERLAY_ID} .yumi-dialog-input:focus {
           border-color: #4f46e5;
           box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+          background: #ffffff;
         }
         #${OVERLAY_ID} .yumi-dialog-actions {
           display: flex;
@@ -940,9 +946,9 @@ setInterval(() => {
         }
 
         // Persist session to backend (optional Cosmos DB feature)
-        const focusTabCount = Array.isArray(data.focusTabIds)
-          ? data.focusTabIds.length
-          : (Array.isArray(sessionLog.tabsAddedToFocus) ? sessionLog.tabsAddedToFocus.length : 0);
+        const focusTabsInSession = Array.isArray(data.focusTabIds) ? data.focusTabIds.length : 0;
+        const tabsAddedDuringSession = Array.isArray(sessionLog.tabsAddedToFocus) ? sessionLog.tabsAddedToFocus.length : 0;
+        const focusTabCount = Math.max(focusTabsInSession, tabsAddedDuringSession + (task ? 1 : 0));
         sessionId = await persistSessionToBackend({
           task,
           focusMinutesPlanned: focusMinutes,

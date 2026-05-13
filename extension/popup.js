@@ -488,10 +488,9 @@ async function removeQueueItemByValue(targetItem) {
 
   const nextQueue = queue.filter((item) => {
     const normalizedItem = normalizeQueueItem(item);
-    return !(
-      normalizedItem.label === targetLabel &&
-      normalizedItem.url === targetUrl
-    );
+    const labelMatches = normalizedItem.label === targetLabel;
+    const urlMatches = !targetUrl || normalizedItem.url === targetUrl;
+    return !(labelMatches && urlMatches);
   });
 
   await chrome.storage.local.set({ queue: nextQueue });
@@ -1056,13 +1055,19 @@ async function renderQueue() {
       openBtn.type = "button";
       openBtn.textContent = item.url ? "Open" : "Open/Find";
       openBtn.addEventListener("click", async () => {
-        await openOrFocusTabForQueueItem(item);
+        const openedTab = await openOrFocusTabForQueueItem(item);
+        if (openedTab) {
+          await removeQueueItemByValue(item);
+        }
         await renderQueue();
       });
 
       text.style.cursor = "pointer";
       text.addEventListener("click", async () => {
-        await openOrFocusTabForQueueItem(item);
+        const openedTab = await openOrFocusTabForQueueItem(item);
+        if (openedTab) {
+          await removeQueueItemByValue(item);
+        }
         await renderQueue();
       });
 
