@@ -561,20 +561,47 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
             padding: 20px;
             background: rgba(15, 23, 42, 0.52);
             backdrop-filter: blur(10px);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+            z-index: 2147483647;
           }
           .yumi-dialog-card {
             width: min(100%, 380px);
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.97);
             border-radius: 20px;
             border: 1px solid rgba(148, 163, 184, 0.22);
             box-shadow: 0 28px 70px rgba(15, 23, 42, 0.34);
             padding: 18px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
             color: #0f172a;
           }
-          .yumi-dialog-badge { display:inline-flex; align-items:center; justify-content:center; min-width:48px; height:26px; padding:0 10px; margin-bottom:12px; border-radius:999px; background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); color:#fff; font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
-          h2 { margin:0 0 10px 0; font-size:18px; line-height:1.2; }
-          p { margin:0; font-size:13px; line-height:1.55; color:#334155; white-space:pre-wrap; }
+          .yumi-dialog-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            height: 26px;
+            padding: 0 10px;
+            margin-bottom: 12px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+          h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+          }
+          p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #334155;
+            white-space: pre-wrap;
+          }
           .yumi-dialog-input {
             width: 100%;
             margin-top: 14px;
@@ -592,11 +619,43 @@ async function showWarning(taskName, defaultSuggestion, tabLooksRelevant, aiReas
             line-height: 1.4;
             -webkit-text-size-adjust: 100%;
           }
-          .yumi-dialog-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.12); }
-          .yumi-dialog-actions { display:flex; gap:10px; margin-top:16px; }
-          .yumi-dialog-button { flex:1; border:none; border-radius:12px; padding:10px 12px; font-size:13px; font-weight:700; cursor:pointer; }
-          .yumi-dialog-button.primary { background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); color:#fff; }
-          .yumi-dialog-button.secondary { background: linear-gradient(180deg,#ffffff 0%,#f1f5f9 100%); color:#1e293b; border:1px solid #d8e0ea; }
+          .yumi-dialog-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+          }
+          .yumi-dialog-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+          }
+          .yumi-dialog-button {
+            flex: 1;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+          }
+          .yumi-dialog-button:hover {
+            transform: translateY(-1px);
+          }
+          .yumi-dialog-button.primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: #fff;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22);
+          }
+          .yumi-dialog-button.secondary {
+            background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+            color: #1e293b;
+            border: 1px solid #d8e0ea;
+          }
+          .yumi-dialog-button.success {
+            background: linear-gradient(135deg, #16a34a 0%, #14b8a6 100%);
+            color: #fff;
+            box-shadow: 0 10px 20px rgba(20, 184, 166, 0.22);
+          }
         `;
 
         // Build dialog content inside shadow
