@@ -392,7 +392,12 @@ if (searchToggleBtn && searchPanel && searchSection) {
         resultsList.innerHTML = results.map(r => `
           <li class="search-result-item">
             <span class="search-result-label">${escapeHtml(r.label || r.task)}</span>
-            <span class="search-result-type">${escapeHtml(r.type || "task")}</span>
+            <div class="search-result-meta">
+              <span class="search-result-type">${escapeHtml(r.type || "task")}</span>
+              ${r.completedAt ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.completedAt).toLocaleString())}</span>` : r.timestamp ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.timestamp).toLocaleString())}</span>` : ""}
+              ${Number.isFinite(Number(r.durationMs)) && Number(r.durationMs) > 0 ? `<span class="search-result-type">Duration: ${escapeHtml(formatDuration(r.durationMs))}</span>` : ""}
+              ${Number.isFinite(Number(r.tabsAddedCount)) ? `<span class="search-result-type">Focus tabs: ${escapeHtml(String(r.tabsAddedCount))}</span>` : ""}
+            </div>
             ${r.url ? `<span class="search-result-type">📍 ${escapeHtml(r.url)}</span>` : ""}
           </li>
         `).join("");
@@ -497,6 +502,23 @@ function formatTime(ms) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 async function getTabById(tabId) {

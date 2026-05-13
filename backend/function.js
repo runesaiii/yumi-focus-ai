@@ -334,6 +334,66 @@ async function indexSessionToSearch(sessionId, userId, sessionData, ts) {
   return true;
 }
 
+function buildSessionSearchMetadata(session) {
+  const actualFocusMs = Number(session?.actualFocusMs || session?.sessionData?.actualFocusMs || 0);
+  const tabsAddedSource =
+    session?.tabsAddedToFocus ||
+    session?.tabsAdded ||
+    session?.sessionData?.tabsAddedToFocus ||
+    session?.sessionData?.tabsAdded ||
+    [];
+  const tabsAdded = Array.isArray(tabsAddedSource) ? tabsAddedSource : [];
+  const completedAtValue =
+    session?.completedAt ||
+    session?.timestamp ||
+    session?.ts ||
+    session?.endTime ||
+    session?.sessionData?.completedAt ||
+    session?.sessionData?.timestamp ||
+    session?.sessionData?.ts ||
+    session?.sessionData?.endTime ||
+    null;
+
+  return {
+    durationMs: Number.isFinite(actualFocusMs) ? actualFocusMs : 0,
+    tabsAddedCount: tabsAdded.length,
+    completedAt: completedAtValue ? new Date(completedAtValue).toISOString() : null
+  };
+}
+
+async function enrichSearchDocument(document, fallbackUserId) {
+  const base = {
+    durationMs: 0,
+    tabsAddedCount: 0,
+    completedAt: document?.timestamp || document?.ts || null
+  };
+
+  if (!document) {
+    return base;
+  }
+
+  const directMetadata = buildSessionSearchMetadata(document);
+  if (!cosmoEnabled || !cosmosContainer || !document.id) {
+    return { ...base, ...directMetadata };
+  }
+
+  const partitionKey = String(document.userId || fallbackUserId || "").trim();
+  if (!partitionKey) {
+    return { ...base, ...directMetadata };
+  }
+
+  try {
+    const { resource: session } = await cosmosContainer.item(String(document.id), partitionKey).read();
+    if (session) {
+      return { ...base, ...buildSessionSearchMetadata(session) };
+    }
+  } catch (error) {
+    console.warn(`[Search] Failed to enrich session ${document.id}: ${error.message}`);
+  }
+
+  return { ...base, ...directMetadata };
+}
+
 async function searchSessionsInCosmos(query, userId) {
   if (!cosmoEnabled || !cosmosContainer) {
     return [];
@@ -357,10 +417,14 @@ async function searchSessionsInCosmos(query, userId) {
     const queue = Array.isArray(session?.queue) ? session.queue : [];
 
     if (task && task.includes(normalizedQuery)) {
+      const metadata = buildSessionSearchMetadata(session);
       results.push({
         type: "task",
         label: String(session?.task || session?.label || "Unnamed task"),
         timestamp: session?.timestamp || session?.ts,
+        completedAt: metadata.completedAt,
+        durationMs: metadata.durationMs,
+        tabsAddedCount: metadata.tabsAddedCount,
         score: 0.8
       });
       continue;
@@ -369,11 +433,15 @@ async function searchSessionsInCosmos(query, userId) {
     for (const item of queue) {
       const itemLabel = String(item?.label || "").toLowerCase();
       if (itemLabel && itemLabel.includes(normalizedQuery)) {
+        const metadata = buildSessionSearchMetadata(session);
         results.push({
           type: "queued",
           label: String(item?.label || ""),
           url: String(item?.url || ""),
           timestamp: session?.timestamp || session?.ts,
+          completedAt: metadata.completedAt,
+          durationMs: metadata.durationMs,
+          tabsAddedCount: metadata.tabsAddedCount,
           score: 0.6
         });
       }
@@ -463,11 +531,15 @@ app.post("/search", async (req, res) => {
 
         const resultsList = [];
         for await (const result of results.results) {
+          const metadata = await enrichSearchDocument(result.document, userId);
           resultsList.push({
             type: "task",
             label: result.document.task || result.document.label || "Unnamed task",
             url: result.document.url || "",
-            timestamp: result.document.timestamp || result.document.ts,
+            timestamp: metadata.completedAt || result.document.timestamp || result.document.ts,
+            completedAt: metadata.completedAt,
+            durationMs: metadata.durationMs,
+            tabsAddedCount: metadata.tabsAddedCount,
             score: result.score
           });
         }
@@ -498,21 +570,29 @@ app.post("/search", async (req, res) => {
       if (!userId || session.userId === userId) {
         const data = session.sessionData;
         if (data.task?.toLowerCase().includes(query.toLowerCase())) {
+          const metadata = buildSessionSearchMetadata(data);
           results.push({ 
             type: "task", 
             label: data.task, 
-            timestamp: session.ts,
+            timestamp: metadata.completedAt || session.ts,
+            completedAt: metadata.completedAt,
+            durationMs: metadata.durationMs,
+            tabsAddedCount: metadata.tabsAddedCount,
             score: 0.8
           });
         }
         if (Array.isArray(data.queue)) {
           data.queue.forEach(item => {
             if (item.label?.toLowerCase().includes(query.toLowerCase())) {
+              const metadata = buildSessionSearchMetadata(data);
               results.push({ 
                 type: "queued", 
                 label: item.label, 
                 url: item.url, 
-                timestamp: session.ts,
+                timestamp: metadata.completedAt || session.ts,
+                completedAt: metadata.completedAt,
+                durationMs: metadata.durationMs,
+                tabsAddedCount: metadata.tabsAddedCount,
                 score: 0.6
               });
             }

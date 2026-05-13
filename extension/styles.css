@@ -601,6 +601,12 @@ ul {
   color: #64748b;
 }
 
+.search-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
