@@ -530,7 +530,7 @@ ul {
 /* Search Section */
 .search-section {
   margin: 4px 0 12px 0;
-  transition: max-height 320ms cubic-bezier(.2,.9,.2,1), padding 260ms ease;
+  transition: max-height 320ms cubic-bezier(.2,.9,.2,1), padding 260ms ease, margin 260ms ease;
   overflow: visible;
 }
 
