@@ -29,6 +29,7 @@ const BACKEND_SEARCH_URL = `${BACKEND_BASE_URL}/search`;
 
 let timerInterval = null;
 let dialogResolver = null;
+let searchCollapseTimeoutId = null;
 
 function escapeHtml(text) {
   const map = {
@@ -273,6 +274,27 @@ if (searchToggleBtn && searchPanel && searchSection) {
     const btn = searchToggleBtn;
     const container = searchSection;
 
+    const finishCollapse = () => {
+      if (searchCollapseTimeoutId) {
+        clearTimeout(searchCollapseTimeoutId);
+        searchCollapseTimeoutId = null;
+      }
+      panel.style.display = "none";
+      panel.classList.remove("open");
+      panel.style.maxHeight = "";
+      panel.style.overflow = "";
+      panel.style.padding = "";
+      panel.style.opacity = "";
+      btn.classList.remove("active");
+      btn.textContent = "Search History (Beta)";
+      btn.setAttribute("aria-expanded", "false");
+      if (container) {
+        container.style.maxHeight = "";
+        container.style.overflow = "";
+        container.style.margin = "";
+      }
+    };
+
     if (panel && !panel.dataset.origPadding) {
       const cs = getComputedStyle(panel);
       panel.dataset.origPadding = `${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}`;
@@ -318,25 +340,17 @@ if (searchToggleBtn && searchPanel && searchSection) {
 
       const onTransitionEnd = (e) => {
         if (e.propertyName === "max-height") {
-          panel.style.display = "none";
-          panel.classList.remove("open");
-          panel.style.maxHeight = "";
-          panel.style.overflow = "";
-          panel.style.padding = "";
-          panel.style.opacity = "";
-          btn.classList.remove("active");
-          btn.textContent = "Search History (Beta)";
-          btn.setAttribute("aria-expanded", "false");
-          if (container) {
-            container.style.maxHeight = "";
-            container.style.overflow = "";
-            container.style.margin = "";
-          }
+          finishCollapse();
           panel.removeEventListener("transitionend", onTransitionEnd);
         }
       };
 
       panel.addEventListener("transitionend", onTransitionEnd);
+
+      searchCollapseTimeoutId = window.setTimeout(() => {
+        finishCollapse();
+        panel.removeEventListener("transitionend", onTransitionEnd);
+      }, 420);
     }
   });
 
