@@ -364,11 +364,48 @@ function buildSessionSearchMetadata(session) {
   };
 }
 
+async function getWeeklyTaskAggregate(taskLabel, userId) {
+  if (!cosmoEnabled || !cosmosContainer || !userId || !taskLabel) {
+    return 0;
+  }
+
+  try {
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const normalizedTask = String(taskLabel || "").toLowerCase().trim();
+
+    const querySpec = {
+      query: `SELECT * FROM c WHERE c.userId = @userId AND c.timestamp > @sevenDaysAgo`,
+      parameters: [
+        { name: "@userId", value: userId },
+        { name: "@sevenDaysAgo", value: sevenDaysAgo }
+      ]
+    };
+
+    const { resources: sessions } = await cosmosContainer.items.query(querySpec).fetchAll();
+    let totalMs = 0;
+
+    for (const session of sessions) {
+      const sessionTask = String(session?.task || session?.sessionData?.task || "").toLowerCase().trim();
+      if (sessionTask === normalizedTask) {
+        const actualFocusMs = Number(session?.actualFocusMs || session?.sessionData?.actualFocusMs || 0);
+        totalMs += actualFocusMs;
+      }
+    }
+
+    return totalMs;
+  } catch (error) {
+    console.warn(`[Search] Failed to calculate weekly aggregate for task "${taskLabel}": ${error.message}`);
+    return 0;
+  }
+}
+
 async function enrichSearchDocument(document, fallbackUserId) {
   const base = {
     durationMs: 0,
     tabsAddedCount: 0,
-    completedAt: document?.timestamp || document?.ts || null
+    completedAt: document?.timestamp || document?.ts || null,
+    weeklyTotalMs: 0
   };
 
   if (!document) {
@@ -387,9 +424,13 @@ async function enrichSearchDocument(document, fallbackUserId) {
 
   try {
     const { resource: session } = await cosmosContainer.item(String(document.id), partitionKey).read();
-    if (session) {
-      return { ...base, ...buildSessionSearchMetadata(session) };
-    }
+    const enrichedMetadata = session ? buildSessionSearchMetadata(session) : directMetadata;
+    
+    // Fetch weekly aggregate for this task
+    const taskLabel = document.task || document.label || "";
+    const weeklyTotal = await getWeeklyTaskAggregate(taskLabel, partitionKey);
+    
+    return { ...base, ...enrichedMetadata, weeklyTotalMs: weeklyTotal };
   } catch (error) {
     console.warn(`[Search] Failed to enrich session ${document.id}: ${error.message}`);
   }
@@ -543,6 +584,7 @@ app.post("/search", async (req, res) => {
             completedAt: metadata.completedAt,
             durationMs: metadata.durationMs,
             tabsAddedCount: metadata.tabsAddedCount,
+            weeklyTotalMs: metadata.weeklyTotalMs || 0,
             score: result.score
           });
         }

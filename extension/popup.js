@@ -397,6 +397,7 @@ if (searchToggleBtn && searchPanel && searchSection) {
               ${r.completedAt ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.completedAt).toLocaleString())}</span>` : r.timestamp ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.timestamp).toLocaleString())}</span>` : ""}
               ${Number.isFinite(Number(r.durationMs)) && Number(r.durationMs) > 0 ? `<span class="search-result-type">Duration: ${escapeHtml(formatDuration(r.durationMs))}</span>` : ""}
               ${Number.isFinite(Number(r.tabsAddedCount)) ? `<span class="search-result-type">Focus tabs: ${escapeHtml(String(r.tabsAddedCount))}</span>` : ""}
+              ${Number.isFinite(Number(r.weeklyTotalMs)) && Number(r.weeklyTotalMs) > 0 ? `<span class="search-result-type" style="color: #7c3aed; font-weight: 600;">📊 Weekly: ${escapeHtml(formatDuration(r.weeklyTotalMs))}</span>` : ""}
             </div>
             ${r.url ? `<span class="search-result-type">📍 ${escapeHtml(r.url)}</span>` : ""}
           </li>
