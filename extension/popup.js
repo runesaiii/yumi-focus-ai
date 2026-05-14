@@ -385,10 +385,24 @@ if (searchToggleBtn && searchPanel && searchSection) {
       const data = await response.json();
       const results = data.results || [];
 
+      const weeklyEl = document.getElementById("weeklySummary");
       if (results.length === 0) {
         resultsList.innerHTML = "<li style=\"padding: 12px; text-align: center; color: #94a3b8;\">No results found</li>";
         searchResults.style.display = "block";
+        if (weeklyEl) { weeklyEl.style.display = "none"; weeklyEl.textContent = ""; }
       } else {
+        // Compute a single weekly total for the search query (sum across returned results)
+        const weeklyTotal = results.reduce((acc, r) => acc + (Number(r.weeklyTotalMs) || 0), 0);
+        if (weeklyEl) {
+          if (Number.isFinite(weeklyTotal) && weeklyTotal > 0) {
+            weeklyEl.style.display = "block";
+            weeklyEl.innerHTML = `<span style=\"color: #7c3aed; font-weight:600;\">📊 Weekly total: ${escapeHtml(formatDuration(weeklyTotal))}</span>`;
+          } else {
+            weeklyEl.style.display = "none";
+            weeklyEl.textContent = "";
+          }
+        }
+
         resultsList.innerHTML = results.map(r => `
           <li class="search-result-item">
             <span class="search-result-label">${escapeHtml(r.label || r.task)}</span>
@@ -397,7 +411,6 @@ if (searchToggleBtn && searchPanel && searchSection) {
               ${r.completedAt ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.completedAt).toLocaleString())}</span>` : r.timestamp ? `<span class="search-result-type">Done: ${escapeHtml(new Date(r.timestamp).toLocaleString())}</span>` : ""}
               ${Number.isFinite(Number(r.durationMs)) && Number(r.durationMs) > 0 ? `<span class="search-result-type">Duration: ${escapeHtml(formatDuration(r.durationMs))}</span>` : ""}
               ${Number.isFinite(Number(r.tabsAddedCount)) ? `<span class="search-result-type">Focus tabs: ${escapeHtml(String(r.tabsAddedCount))}</span>` : ""}
-              ${Number.isFinite(Number(r.weeklyTotalMs)) && Number(r.weeklyTotalMs) > 0 ? `<span class="search-result-type" style="color: #7c3aed; font-weight: 600;">📊 Weekly: ${escapeHtml(formatDuration(r.weeklyTotalMs))}</span>` : ""}
             </div>
             ${r.url ? `<span class="search-result-type">📍 ${escapeHtml(r.url)}</span>` : ""}
           </li>
