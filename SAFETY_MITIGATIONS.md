@@ -1,14 +1,15 @@
 # Yumi Focus AI - Risk & Safety Evaluation & Mitigations
 
 **Document Date:** May 11, 2026  
-**Version:** 1.0  
-**Status:** Initial Risk Assessment
+**Updated:** May 15, 2026  
+**Version:** 1.1  
+**Status:** Updated Risk Assessment
 
 ---
 
 ## Executive Summary
 
-Yumi Focus AI monitors user browser activity to help with focus management. This document outlines identified risks and implemented/planned mitigations.
+Yumi Focus AI monitors user browser activity to help with focus management. This document outlines identified risks and implemented/planned mitigations. As of May 15, the backend is running with restricted CORS, rate limiting, Cosmos DB session persistence, and Azure AI Search indexing.
 
 **Risk Level:** MEDIUM (handles sensitive data, but limited scope and good fallback mechanisms)
 
@@ -140,13 +141,27 @@ await chrome.storage.local.set({
 
 **Current State:**
 ```javascript
-// backend/function.js - Line 6
-app.use(cors()); // ⚠️ Allows all origins
+const allowedCorsOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allows chrome-extension://, localhost, and explicitly configured origins
+    }
+  })
+);
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60
+});
 ```
 
 **Mitigations Implemented:**
 - ✅ Backend validates input before passing to Azure OpenAI
 - ✅ Only backend can access Azure credentials
+- ✅ CORS is restricted to allowed origins, localhost, and the extension
+- ✅ API rate limiting is enabled on the backend
 
 **Mitigations Recommended:**
 1. **Restrict CORS to Known Origins:**

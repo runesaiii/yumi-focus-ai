@@ -1,7 +1,8 @@
 # Yumi Focus AI - Runtime Issues Report
 
 **Report Generated:** April 30, 2026  
-**Status:** Pre-Testing Code Review  
+**Updated:** May 15, 2026  
+**Status:** Post-Testing Runtime Review  
 
 ---
 
@@ -19,7 +20,11 @@ const idx = queue.findIndex((q) => (normalizeQueueItem(q).label || "") === (queu
 
 **Problem:** If queue item is stored differently (e.g., with different spaces or capitalization), this won't find it.
 
-**Fix:** Use a more robust match:
+**Current Status:** ✅ **RESOLVED**
+
+**Fix Applied:** The queue update path now uses normalized label comparison (`toLowerCase().trim()`) so the URL update succeeds even when spacing/casing differs.
+
+**Reference Pattern:**
 ```javascript
 const idx = queue.findIndex((q) => {
   const normalized = normalizeQueueItem(q);
@@ -27,7 +32,7 @@ const idx = queue.findIndex((q) => {
 });
 ```
 
-**Test:** Save "write notes", click "Open/Find", allow search, verify queue item now has search URL.
+**Verification:** Save "write notes", click "Open/Find", allow search, verify queue item now has search URL.
 
 ---
 
@@ -77,7 +82,9 @@ if (!summaryShown) {
 }
 ```
 
-**Fix:** Show alert when summary fails:
+**Current Status:** ⚠️ **STILL OPEN**
+
+**Fix Needed:** Show alert when summary fails:
 ```javascript
 if (!summaryShown) {
   alert("⚠️ Could not fetch summary. Proceeding to next task...");
@@ -128,7 +135,11 @@ setTimeout(async () => {
 
 **Problem:** User may navigate away from new tab before warning appears, making it seem broken.
 
-**Fix:** Reduce timeout to 50ms or remove it:
+**Current Status:** ✅ **RESOLVED**
+
+**Fix Applied:** The warning path now runs immediately in `onCreated`/`onUpdated` without an intentional delay, so the dialog appears as soon as the tab is ready.
+
+**Legacy Example (no longer used):**
 ```javascript
 chrome.tabs.onCreated.addListener(async (tab) => {
   // No delay, process immediately
@@ -136,7 +147,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 });
 ```
 
-**Test:** Open new tab during session, warning should appear within 50ms.
+**Verification:** Open a new tab during session, warning should appear right away.
 
 ---
 
@@ -166,7 +177,11 @@ catch (error) {
 
 **Problem:** If tab switch fails silently, flag remains true, blocking warnings for next 5+ seconds.
 
-**Fix:** Add timeout or always reset after action:
+**Current Status:** ✅ **RESOLVED**
+
+**Fix Applied:** The transition flag is reset in a `finally` block, so it clears even when tab switching or popup injection fails.
+
+**Reference Pattern:**
 ```javascript
 transitioningToNextTask = true;
 await chrome.storage.local.set({ currentTask: "", focusTabIds: [] });
@@ -180,7 +195,7 @@ try {
 }
 ```
 
-**Test:** Start session with queue, disable internet, complete task, verify warnings still work on non-queue tabs.
+**Verification:** Start session with queue, complete task, verify warnings still work on non-queue tabs.
 
 ---
 
@@ -286,12 +301,12 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 | # | Issue | Severity | Status | Effort |
 |---|-------|----------|--------|--------|
-| 1 | Queue URL Update Logic | MEDIUM | FIX NOW | 5 min |
+| 1 | Queue URL Update Logic | MEDIUM | RESOLVED | - |
 | 2 | Continue Session State | LOW | OK | - |
-| 3 | Missing Summary Error Alert | MEDIUM | FIX NOW | 2 min |
+| 3 | Missing Summary Error Alert | MEDIUM | OPEN | 2 min |
 | 4 | Timer Display Delay | LOW | OK | - |
-| 5 | New Tab Warning Delay | MEDIUM | FIX | 5 min |
-| 6 | Transition Flag Not Reset | MEDIUM | FIX | 5 min |
+| 5 | New Tab Warning Delay | MEDIUM | RESOLVED | - |
+| 6 | Transition Flag Not Reset | MEDIUM | RESOLVED | - |
 | 7 | Empty Queue Label | LOW | OK | - |
 | 8 | Custom Modals | LOW | DEFER | 1 hr |
 | 9 | ARIA Labels | LOW | DEFER | 30 min |
@@ -304,11 +319,11 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 ## Recommended Actions Before Release
 
-### Immediate (Before Testing)
-1. ✅ Fix queue URL update logic (Issue #1)
-2. ✅ Add error alert for missing summary (Issue #3)
-3. ✅ Reduce new tab warning delay (Issue #5)
-4. ✅ Fix transition flag timeout (Issue #6)
+### Immediate (Before Release)
+1. ✅ Queue URL update logic resolved (Issue #1)
+2. ⏳ Add error alert for missing summary (Issue #3)
+3. ✅ New tab warning delay resolved (Issue #5)
+4. ✅ Transition flag reset resolved (Issue #6)
 
 ### After Testing
 5. Add task name maxlength attribute

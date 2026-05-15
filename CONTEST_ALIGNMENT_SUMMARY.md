@@ -1,6 +1,6 @@
 # Yumi Focus AI - Contest Alignment Quick Reference
 
-**Analysis Date:** May 11, 2026 | **Updated:** May 13, 2026  
+**Analysis Date:** May 11, 2026 | **Updated:** May 15, 2026  
 **Project:** Yumi Focus AI (Azure-based Chrome Focus Extension)
 
 ---
@@ -14,7 +14,7 @@
 | **Expectation #2: Framework (Bonus)** | ⚠️ Deferred | - | Out of scope for current timeline |
 | **Expectation #3: Model Strategy (Bonus)** | ✅ Partial | - | Has Foundry fallback, multi-endpoint resilience |
 | **Expectation #4: Risk & Safety** | ✅ Documented | - | SAFETY_MITIGATIONS.md created |
-| **Session History Features** | ✅ **Enhanced** | - | Duration, completion time, focus-tab count now tracked |
+| **Session History Features** | ✅ **Enhanced** | - | Duration, completion time, focus-tab count, weekly total now tracked |
 | **Overall Contest Alignment** | ✅ **75-80%** | - | Production-ready with working Azure services |
 
 ---
@@ -96,6 +96,7 @@
   - **Duration Tracking:** Calculates actual focus time (was broken, now fixed)
   - **Completion Time:** Shows when task was completed (human-readable)
   - **Focus Tab Count:** Displays total tabs used in session (now accurate)
+  - **Weekly Total:** Shows total time spent on the same/similar task across the last 7 days
   - **Backend Enrichment:** Metadata pulled from Cosmos on search results
 - **Formatting:**
   - Duration: "2h 15m" or "45m 30s" or "30s"
@@ -154,6 +155,7 @@
    - Added `focusTabCount` to session payload (accurate total tabs)
    - Fixed duration calculation bug (was showing epoch time)
    - Fixed focus-tab tracking bug (was using previous session data)
+  - Added weekly task total in search history
    - Backend now enriches search results with metadata
    - Popup displays: Duration + Completion Time + Focus Tab Count
 
@@ -177,6 +179,7 @@
 | May 13 AM | Session History Enhancement | ✅ Added duration/time/tabs |
 | May 13 PM | Bug Fixes & Verification | ✅ User tested, confirmed working |
 | May 13 PM | Service Stack Verification | ✅ Backfill successful |
+| May 15 | Documentation Sync | ✅ Runtime and safety docs updated |
 | Today | Documentation Update | ✅ This summary |
 
 ### Did Not Implement (By Design)
@@ -249,7 +252,7 @@ Your project is **production-ready** with:
 1. Prepare demo video showcasing all features
 2. Highlight Azure service integration in README
 3. Submit with SAFETY_MITIGATIONS.md attached
-4. Mention session history enhancements (duration, tabs, timestamps)
+4. Mention session history enhancements (duration, tabs, timestamps, weekly totals)
 
 ---
 
