@@ -8,15 +8,15 @@ An agentic AI-powered Chrome extension that prevents task switching and helps us
 - Impulse Capture Queue
 - Focus Timer (Pomodoro)
 - Tab Monitoring
-- Optional: Session persistence (Cosmos DB)
-- Optional: Historical task search (Azure AI Search)
+- Session persistence (Cosmos DB)
+- Historical task search (Azure AI Search)
 
 ## Tech Stack
 - Chrome Extension (Manifest v3, JavaScript)
 - Azure App Service (Backend)
 - Azure OpenAI (Optional AI layer)
-- Azure Cosmos DB (Optional session storage)
-- Azure AI Search (Optional historical search)
+- Azure Cosmos DB (Session storage)
+- Azure AI Search (Historical search)
 
 ## App Service Deployment
 
@@ -29,7 +29,7 @@ The backend is ready to run on Azure App Service. It reads `PORT` from the envir
 - `AZURE_OPENAI_API_VERSION` (optional, defaults to `2024-02-15-preview`)
 - `CORS_ORIGIN` (comma-separated allowed origins, or `*` for local testing only)
 
-### Optional App Settings (Phase 2)
+### App Settings (Phase 2)
 - `COSMOS_DB_CONNECTION_STRING` — Cosmos DB connection string for session persistence
 - `COSMOS_DB_DATABASE` — Database name (default: `yumi`)
 - `AI_SEARCH_ENDPOINT` — Azure AI Search endpoint URL
@@ -71,7 +71,7 @@ If those variables are not set, the backend falls back to the local heuristic cl
 
 ---
 
-## Advanced Setup (Optional)
+## Advanced Setup 
 
 ### Cosmos DB Session Persistence
 1. Create a Cosmos DB account in Azure Portal
